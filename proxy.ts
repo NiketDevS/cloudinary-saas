@@ -7,8 +7,9 @@ export default clerkMiddleware(async (auth, req) => {
 
   // Public pages
   const isPublicRoute =
-    pathname === "/" ||
-    pathname.startsWith("/sign-in") ||
+  pathname === "/" ||
+  pathname === "/social-share" ||
+  pathname.startsWith("/sign-in") ||
     pathname.startsWith("/sign-up");
 
   // Public APIs
