@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
-import { auth } from "@clerk/nextjs/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
+import { checkAndSyncUser } from "@/lib/dbUserSync";
 
 
 cloudinary.config({
@@ -20,15 +18,11 @@ interface CloudinaryUploadResult {
 }
 
 export async function POST(request: NextRequest) {
+  const dbUser = await checkAndSyncUser();
 
-    //todo: to check user
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-
+  if (!dbUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     if (
@@ -62,7 +56,7 @@ export async function POST(request: NextRequest) {
             resource_type: "video",
             folder: "video-uploads",
             transformation: [
-                {quality: "auto", fetch_format: "mp4"}
+              { quality: "auto", fetch_format: "mp4" }
             ]
           },
           (error, result) => {
@@ -78,17 +72,16 @@ export async function POST(request: NextRequest) {
       },
     );
 
-
     const video = await prisma.video.create({
-        data: {
-            title,
-            description,
-            publicId: result.public_id,
-            originalSize,
-            compressedSize: String(result.bytes),
-            duration: result.duration || 0,
-
-        }
+      data: {
+        title,
+        description,
+        publicId: result.public_id,
+        originalSize,
+        compressedSize: String(result.bytes),
+        duration: result.duration || 0,
+        userId: dbUser.id,
+      }
     });
 
     return NextResponse.json(
@@ -111,7 +104,5 @@ export async function POST(request: NextRequest) {
         status: 500,
       },
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
